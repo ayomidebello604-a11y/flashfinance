@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    touch-action: manipulation;
+  }
+
+  :root {
+    --background: 225 25% 5%;
+    --foreground: 210 20% 95%;
+
+    --card: 225 22% 8%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 225 22% 8%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 225 25% 5%;
+
+    --secondary: 225 18% 13%;
+    --secondary-foreground: 210 15% 80%;
+
+    --muted: 225 16% 11%;
+    --muted-foreground: 220 12% 50%;
+
+    --accent: 200 80% 55%;
+    --accent-foreground: 225 25% 5%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 225 16% 14%;
+    --input: 225 16% 14%;
+    --ring: 160 84% 39%;
+
+    --radius: 0.625rem;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Financial-specific tokens */
+    --profit: 145 70% 45%;
+    --loss: 0 72% 55%;
+    --warning: 38 92% 50%;
+    --info: 200 80% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(200 80% 55%));
+    --gradient-card: linear-gradient(145deg, hsl(225 22% 10%), hsl(225 22% 6%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(225 25% 7%), hsl(225 25% 4%));
+    --shadow-glow: 0 0 30px -5px hsl(160 84% 39% / 0.15);
+    --shadow-card: 0 2px 16px -2px hsl(0 0% 0% / 0.5);
+
+    --sidebar-background: 225 25% 6%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 225 25% 5%;
+    --sidebar-accent: 225 18% 13%;
+    --sidebar-accent-foreground: 210 15% 80%;
+    --sidebar-border: 225 16% 14%;
+    --sidebar-ring: 160 84% 39%;
+
+    --chart-1: 160 84% 39%;
+    --chart-2: 200 80% 55%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 70% 60%;
+    --chart-5: 0 72% 55%;
+  }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 225 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 25% 10%;
+
+    --primary: 160 84% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 225 20% 25%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 200 80% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 160 84% 35%;
+
+    --profit: 145 70% 35%;
+    --loss: 0 72% 50%;
+    --warning: 38 92% 45%;
+    --info: 200 80% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(160 84% 35%), hsl(200 80% 50%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 97%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 97%));
+    --shadow-glow: 0 0 30px -5px hsl(160 84% 35% / 0.1);
+    --shadow-card: 0 2px 16px -2px hsl(0 0% 0% / 0.08);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 225 25% 10%;
+    --sidebar-primary: 160 84% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 93%;
+    --sidebar-accent-foreground: 225 20% 25%;
+    --sidebar-border: 220 13% 87%;
+    --sidebar-ring: 160 84% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 22px;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-md border border-border/50 rounded-lg;
+    box-shadow: var(--shadow-card);
+  }
+
+  .stat-card {
+    @apply bg-card border border-border/50 rounded-lg p-4 transition-all duration-200;
+  }
+  .stat-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: var(--shadow-glow);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .profit-text {
+    color: hsl(var(--profit));
+  }
+
+  .loss-text {
+    color: hsl(var(--loss));
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}

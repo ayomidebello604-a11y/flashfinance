@@ -1,0 +1,19 @@
+project_id = "mfptzerljbpyosxqljwa"
+
+[functions.stock-research]
+verify_jwt = false
+
+[functions.stock-strategy]
+verify_jwt = false
+
+[functions.stock-news]
+verify_jwt = false
+
+[functions.stock-sentiment]
+verify_jwt = false
+
+[functions.stock-risk]
+verify_jwt = false
+
+[functions.stock-assist]
+verify_jwt = false
