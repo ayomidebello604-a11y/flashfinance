@@ -23,10 +23,10 @@ const queryClient = new QueryClient();
 const ThemeInit = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    if (saved === "light") {
-      document.documentElement.classList.add("light");
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove("light");
+      document.documentElement.classList.remove("dark");
     }
   }, []);
   return <>{children}</>;
