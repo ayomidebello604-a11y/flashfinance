@@ -12,12 +12,32 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  preview: {
+    port: 8080,
+  },
+  build: {
+    outDir: "dist",
+    rollupOptions: {
+      output: {
+        entryFileNames: "[name].[hash].js",
+        chunkFileNames: "[name].[hash].js",
+        assetFileNames: "[name].[hash][extname]",
+      },
+    },
+  },
+  plugins: [react(), mode === "development" && componentTagger()].filter(
+    Boolean,
+  ),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "@tanstack/react-query"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "@tanstack/react-query",
+    ],
   },
   optimizeDeps: {
     include: ["@tanstack/react-query"],

@@ -30,7 +30,7 @@ const Settings = () => {
         });
     }
     // Check current theme
-    setDarkMode(!document.documentElement.classList.contains("light"));
+    setDarkMode(document.documentElement.classList.contains("dark"));
   }, [user]);
 
   const handleSave = async () => {
@@ -51,10 +51,10 @@ const Settings = () => {
   const toggleTheme = (isDark: boolean) => {
     setDarkMode(isDark);
     if (isDark) {
-      document.documentElement.classList.remove("light");
+      document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
   };
