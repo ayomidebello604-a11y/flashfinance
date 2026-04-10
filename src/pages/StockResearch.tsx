@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, TrendingUp, TrendingDown, Target, Shield, Loader2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,14 +28,24 @@ const StockResearch = () => {
   const [ticker, setTicker] = useState("");
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ResearchReport | null>(null);
+  const [searchParams] = useSearchParams();
 
-  const handleAnalyze = async () => {
-    if (!ticker.trim()) return;
+  useEffect(() => {
+    const stockParam = searchParams.get("stock");
+    if (stockParam) {
+      setTicker(stockParam);
+      // Automatically analyze when stock is passed via URL
+      analyzeStock(stockParam);
+    }
+  }, [searchParams]);
+
+  const analyzeStock = async (symbol: string) => {
+    if (!symbol.trim()) return;
     setLoading(true);
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke("stock-research", {
-        body: { ticker: ticker.trim() },
+        body: { ticker: symbol.trim() },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -44,6 +55,11 @@ const StockResearch = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAnalyze = async () => {
+    if (!ticker.trim()) return;
+    analyzeStock(ticker);
   };
 
   const consensusColor = (c?: string) => {

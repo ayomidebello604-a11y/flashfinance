@@ -36,16 +36,56 @@ const Settings = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ display_name: displayName, updated_at: new Date().toISOString() })
-      .eq("id", user.id);
-    if (error) {
-      toast.error("Failed to update profile");
-    } else {
-      toast.success("Profile updated!");
+    try {
+      console.log("Attempting to update profile for user:", user.id);
+      
+      // First try to update
+      const { data: updateData, error: updateError } = await supabase
+        .from("profiles")
+        .update({ display_name: displayName })
+        .eq("id", user.id)
+        .select();
+      
+      if (updateError) {
+        console.error("Update error:", updateError);
+        
+        // If update fails, try to insert
+        console.log("Update failed, attempting to insert profile...");
+        const { data: insertData, error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            email: user.email,
+            display_name: displayName,
+            created_at: new Date().toISOString(),
+          })
+          .select();
+        
+        if (insertError) {
+          console.error("Insert error:", insertError);
+          toast.error(insertError.message || "Failed to save profile");
+        } else {
+          console.log("Profile inserted successfully:", insertData);
+          // Update auth metadata
+          await supabase.auth.updateUser({
+            data: { display_name: displayName }
+          });
+          toast.success("Profile created and saved!");
+        }
+      } else {
+        console.log("Profile updated successfully:", updateData);
+        // Update auth metadata to reflect the change in UI
+        await supabase.auth.updateUser({
+          data: { display_name: displayName }
+        });
+        toast.success("Profile updated!");
+      }
+    } catch (err: any) {
+      console.error("Profile save exception:", err);
+      toast.error(err?.message || "An error occurred while saving profile");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const toggleTheme = (isDark: boolean) => {

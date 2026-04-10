@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, LogOut, Settings, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,16 @@ const TopBar = ({ onMenuClick, sidebarOpen = false }: TopBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
   const title = pageTitles[location.pathname] || "FlashFinance AI";
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/research?stock=${encodeURIComponent(searchQuery.toUpperCase())}`);
+      setSearchQuery("");
+    }
+  };
 
   return (
     <header className="h-16 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 shrink-0 sticky top-0 z-10">
@@ -41,13 +51,15 @@ const TopBar = ({ onMenuClick, sidebarOpen = false }: TopBarProps) => {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <div className="relative hidden sm:block">
+        <form onSubmit={handleSearch} className="relative hidden sm:block">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Search stocks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-40 sm:w-64 pl-9 h-9 bg-secondary/50 border-border/50 text-sm"
           />
-        </div>
+        </form>
         <button
           onClick={signOut}
           className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors h-9 w-9 flex items-center justify-center shrink-0"

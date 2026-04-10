@@ -20,7 +20,7 @@ const Auth = () => {
   // Add ripple keyframe animation
   const rippleStyle = ``;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -42,15 +42,31 @@ const Auth = () => {
       });
       if (error) {
         toast.error(error.message);
-      } else if (data.session) {
-        navigate("/");
-      } else {
-        toast.success("Check your email to confirm your account!");
+      } else if (data.user) {
+        // Attempt to create user profile
+        try {
+          await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: email,
+              display_name: displayName,
+              created_at: new Date().toISOString(),
+            })
+            .select();
+        } catch (profileError) {
+          console.warn('Profile creation warning:', profileError);
+        }
+
+        if (data.session) {
+          navigate("/");
+        } else {
+          toast.success("Check your email to confirm your account!");
+        }
       }
     }
     setLoading(false);
   };
-
   const ambientColor = "hsl(145, 63%, 49%)";
 
   return (
