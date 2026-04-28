@@ -17,56 +17,98 @@ const Auth = () => {
   const [lampOn, setLampOn] = useState(false);
   const navigate = useNavigate();
 
-  // Add ripple keyframe animation
   const rippleStyle = ``;
 
-   const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard: ensure supabase client is available before doing anything
+    if (!supabase) {
+      toast.error("Authentication service is not configured. Check your environment variables.");
+      return;
+    }
+
+    // Guard: lamp must be on for the form to be usable
+    if (!lampOn) {
+      toast.error("Please turn on the lamp to get started.");
+      return;
+    }
+
     setLoading(true);
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        navigate("/");
-      }
-    } else {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { display_name: displayName },
-          emailRedirectTo: window.location.origin,
-        },
-      });
-      if (error) {
-        toast.error(error.message);
-      } else if (data.user) {
-        // Attempt to create user profile
-        try {
-          await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: email,
-              display_name: displayName,
-              created_at: new Date().toISOString(),
-            })
-            .select();
-        } catch (profileError) {
-          console.warn('Profile creation warning:', profileError);
-        }
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-        if (data.session) {
+        if (error) {
+          toast.error(error.message);
+        } else if (data.session) {
           navigate("/");
         } else {
-          toast.success("Check your email to confirm your account!");
+          toast.error("Login failed. Please try again.");
+        }
+
+      } else {
+        // Sign up flow
+        if (!displayName.trim()) {
+          toast.error("Please enter a display name.");
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { display_name: displayName.trim() },
+            emailRedirectTo: window.location.origin,
+          },
+        });
+
+        if (error) {
+          toast.error(error.message);
+        } else if (data.user) {
+          // Attempt profile creation — wrapped in its own try/catch
+          // so a failure here does NOT block the user from being signed up
+          try {
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .insert({
+                id: data.user.id,
+                email: email.trim(),
+                display_name: displayName.trim(),
+                created_at: new Date().toISOString(),
+              });
+
+            if (profileError) {
+              console.warn("Profile creation warning:", profileError.message);
+            }
+          } catch (profileException) {
+            console.warn("Profile creation exception:", profileException);
+          }
+
+          // Navigate or notify regardless of profile creation result
+          if (data.session) {
+            navigate("/");
+          } else {
+            toast.success("Account created! Check your email to confirm your account.");
+          }
+        } else {
+          toast.error("Sign up failed. Please try again.");
         }
       }
+    } catch (unexpectedError) {
+      // Catch any unhandled network or runtime errors
+      console.error("Auth error:", unexpectedError);
+      toast.error("Something went wrong. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
   const ambientColor = "hsl(145, 63%, 49%)";
 
   return (
@@ -193,7 +235,7 @@ const Auth = () => {
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       className="pl-10 bg-gray-800/50 border-gray-700/50 text-white text-xs sm:text-sm placeholder-gray-500"
-                      required
+                      required={!isLogin}
                     />
                   </div>
                 </motion.div>
@@ -221,6 +263,7 @@ const Auth = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 bg-gray-800/50 border-gray-700/50 text-white text-xs sm:text-sm placeholder-gray-500"
                     required
+                    autoComplete="email"
                   />
                 </div>
               </motion.div>
@@ -248,6 +291,7 @@ const Auth = () => {
                     className="pl-10 bg-gray-800/50 border-gray-700/50 text-white text-xs sm:text-sm placeholder-gray-500"
                     minLength={6}
                     required
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                   />
                 </div>
               </motion.div>
@@ -260,7 +304,7 @@ const Auth = () => {
                 <Button
                   type="submit"
                   className="w-full gap-2 text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
-                  disabled={loading}
+                  disabled={loading || !lampOn}
                 >
                   {loading ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -282,7 +326,13 @@ const Auth = () => {
             >
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  // Clear fields when switching between login and signup
+                  setEmail("");
+                  setPassword("");
+                  setDisplayName("");
+                }}
                 className="text-xs sm:text-sm text-gray-400 hover:text-gray-200 transition-colors"
               >
                 {isLogin
