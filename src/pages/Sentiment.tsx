@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { BarChart3, Loader2, TrendingUp, TrendingDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
+import { Button } from "#src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { Badge } from "#src/components/ui/badge";
+import { Progress } from "#src/components/ui/progress";
+import { requestAi } from "#src/lib/ai";
 import { toast } from "sonner";
-import StockAutocomplete from "@/components/StockAutocomplete";
+import StockAutocomplete from "#src/components/StockAutocomplete";
 
 interface SentimentSource {
   name: string;
@@ -34,14 +34,12 @@ const Sentiment = () => {
     setLoading(true);
     setData(null);
     try {
-      const { data: result, error } = await supabase.functions.invoke("stock-sentiment", {
-        body: { ticker: ticker.trim() },
+      const result = await requestAi<SentimentData>("sentiment", {
+        ticker: ticker.trim(),
       });
-      if (error) throw error;
-      if (result.error) throw new Error(result.error);
       setData(result);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to analyze sentiment");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to analyze sentiment");
     } finally {
       setLoading(false);
     }

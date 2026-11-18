@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, TrendingUp, TrendingDown, Target, Shield, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import StockAutocomplete from "@/components/StockAutocomplete";
+import { Button } from "#src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { Badge } from "#src/components/ui/badge";
+import { Alert, AlertDescription } from "#src/components/ui/alert";
+import { requestAi } from "#src/lib/ai";
+import { fetchMarketQuote } from "#src/lib/api";
+import type { IndexPrice } from "#src/lib/market-types";
+import StockAutocomplete from "#src/components/StockAutocomplete";
 
 interface ResearchReport {
   company: string;
   ticker: string;
   sector: string;
-  price?: string;
   marketCap?: string;
   peRatio?: string;
   summary: string;
@@ -24,42 +26,52 @@ interface ResearchReport {
   outlook: string;
 }
 
+interface ResearchData {
+  report: ResearchReport;
+  quote: IndexPrice | null;
+  quoteError: string | null;
+}
+
 const StockResearch = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeTicker = searchParams.get("stock") || "";
   const [ticker, setTicker] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<ResearchReport | null>(null);
-  const [searchParams] = useSearchParams();
+  const [submittedTicker, setSubmittedTicker] = useState("");
+  const activeTicker = routeTicker || submittedTicker;
+  const {
+    data,
+    isFetching: loading,
+    error: requestError,
+    refetch,
+  } = useQuery({
+    queryKey: ["stock-research", activeTicker],
+    enabled: Boolean(activeTicker),
+    queryFn: async (): Promise<ResearchData> => {
+      const [researchResult, quoteResult] = await Promise.allSettled([
+        requestAi<ResearchReport>("research", { ticker: activeTicker }),
+        fetchMarketQuote(activeTicker),
+      ]);
+      if (researchResult.status === "rejected") throw researchResult.reason;
+      return {
+        report: researchResult.value,
+        quote: quoteResult.status === "fulfilled" ? quoteResult.value : null,
+        quoteError: quoteResult.status === "rejected"
+          ? quoteResult.reason instanceof Error ? quoteResult.reason.message : "The quote request failed."
+          : null,
+      };
+    },
+  });
+  const report = data?.report ?? null;
+  const quote = data?.quote ?? null;
+  const quoteError = data?.quoteError ?? null;
 
-  useEffect(() => {
-    const stockParam = searchParams.get("stock");
-    if (stockParam) {
-      setTicker(stockParam);
-      // Automatically analyze when stock is passed via URL
-      analyzeStock(stockParam);
-    }
-  }, [searchParams]);
-
-  const analyzeStock = async (symbol: string) => {
-    if (!symbol.trim()) return;
-    setLoading(true);
-    setReport(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("stock-research", {
-        body: { ticker: symbol.trim() },
-      });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      setReport(data);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to analyze stock");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!ticker.trim()) return;
-    analyzeStock(ticker);
+  const handleAnalyze = () => {
+    const symbol = (routeTicker || ticker).trim().toUpperCase();
+    if (!symbol) return;
+    if (routeTicker) setSearchParams({});
+    setTicker(symbol);
+    if (symbol === activeTicker) void refetch();
+    else setSubmittedTicker(symbol);
   };
 
   const consensusColor = (c?: string) => {
@@ -75,21 +87,32 @@ const StockResearch = () => {
       <div>
         <h2 className="font-display text-xl sm:text-2xl font-bold mb-2">AI Stock Research</h2>
         <p className="text-muted-foreground text-xs sm:text-sm">
-          Get a comprehensive picture of any stock — synthesized from multiple web sources with future projections.
+          Get educational AI analysis alongside a separate Finnhub quote. Provider quote timing depends on your plan.
         </p>
       </div>
+
+      {requestError && (
+        <Alert className="bg-[hsl(var(--loss))]/10 border-[hsl(var(--loss))]/30">
+          <AlertDescription>
+            {requestError instanceof Error ? requestError.message : "The research request failed."}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <form onSubmit={(e) => { e.preventDefault(); handleAnalyze(); }} className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
           <StockAutocomplete
-            value={ticker}
-            onChange={setTicker}
+            value={routeTicker || ticker}
+            onChange={(value) => {
+              if (routeTicker) setSearchParams({});
+              setTicker(value);
+            }}
             placeholder="Enter stock ticker (e.g., AAPL)"
             className="pl-10 bg-secondary/50 text-sm"
           />
         </div>
-        <Button type="submit" disabled={loading || !ticker.trim()} className="w-full sm:w-auto text-sm">
+        <Button type="submit" disabled={loading || !(routeTicker || ticker).trim()} className="w-full sm:w-auto text-sm">
           {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
           Analyze
         </Button>
@@ -99,7 +122,7 @@ const StockResearch = () => {
         <Card className="bg-card border-border/50">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Loader2 size={32} className="animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground text-sm">Analyzing {ticker.toUpperCase()}...</p>
+            <p className="text-muted-foreground text-sm">Analyzing {activeTicker.toUpperCase()}...</p>
           </CardContent>
         </Card>
       )}
@@ -130,7 +153,24 @@ const StockResearch = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  {report.price && <p className="font-mono text-lg font-bold">{report.price}</p>}
+                  {quote ? (
+                    <>
+                      <p className="font-mono text-lg font-bold">${quote.price.toFixed(2)}</p>
+                      <p className={`text-xs font-mono ${quote.change >= 0 ? "profit-text" : "loss-text"}`}>
+                        Finnhub quote · {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePercent >= 0 ? "+" : ""}{quote.changePercent.toFixed(2)}%)
+                      </p>
+                      {quote.timestamp && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          As of {new Date(quote.timestamp * 1000).toLocaleTimeString()}
+                        </p>
+                      )}
+                      {quoteError && <p className="text-xs text-muted-foreground mt-1">{quoteError}</p>}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Finnhub quote unavailable{quoteError ? `: ${quoteError}` : ""}
+                    </p>
+                  )}
                   {report.analystConsensus && (
                     <p className={`text-sm font-semibold ${consensusColor(report.analystConsensus)}`}>
                       {report.analystConsensus} · PT: {report.priceTarget}

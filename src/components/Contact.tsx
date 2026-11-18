@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, Mail, Github, Linkedin, Twitter } from "lucide-react";
+import { Send, Mail, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 const Contact = () => {
@@ -85,13 +85,13 @@ const Contact = () => {
                   <Mail size={18} /> samadbello@example.com
                 </a>
                 <a href="#" className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors text-sm">
-                  <Github size={18} /> github.com/samadbello
+                  <ExternalLink size={18} /> github.com/samadbello
                 </a>
                 <a href="#" className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors text-sm">
-                  <Linkedin size={18} /> linkedin.com/in/samadbello
+                  <ExternalLink size={18} /> linkedin.com/in/samadbello
                 </a>
                 <a href="#" className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors text-sm">
-                  <Twitter size={18} /> @samadbello
+                  <ExternalLink size={18} /> @samadbello
                 </a>
               </div>
             </div>

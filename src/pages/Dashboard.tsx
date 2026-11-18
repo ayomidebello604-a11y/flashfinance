@@ -1,23 +1,12 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart3, Zap, RefreshCw, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart3, Zap, RefreshCw, AlertCircle, Minus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "#src/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  fetchIndexPrices,
-  fetchTopMovers,
-  fetchSectorPerformance,
-  fetchMarketSentiment,
-  fetchHotTopics,
-  fetchMarketChartData,
-  generateMockMarketData,
-  MarketData,
-  IndexPrice,
-  Stock,
-  SectorData,
-} from "@/lib/api";
+import { Alert, AlertDescription } from "#src/components/ui/alert";
+import { fetchDashboardData } from "#src/lib/api";
+import type { IndexPrice, MarketData, SectorData, Stock } from "#src/lib/market-types";
 
 const fadeIn = {
   initial: { opacity: 0, y: 16 },
@@ -28,6 +17,7 @@ const fadeIn = {
 const chartConfig = {
   sp500: { label: "S&P 500", color: "hsl(var(--chart-1))" },
   nasdaq: { label: "NASDAQ", color: "hsl(var(--chart-2))" },
+  dow: { label: "Dow Jones", color: "hsl(var(--chart-3))" },
 };
 
 const sectorChartConfig = {
@@ -35,109 +25,61 @@ const sectorChartConfig = {
 };
 
 const Dashboard = () => {
-  const [load, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [marketData, setMarketData] = useState<MarketData[]>(generateMockMarketData());
-  const [indices, setIndices] = useState<IndexPrice[]>([]);
-  const [topMovers, setTopMovers] = useState<Stock[]>([]);
-  const [sectorData, setSectorData] = useState<SectorData[]>([]);
-  const [sentimentData, setSentimentData] = useState<Array<{ name: string; value: number; color: string }>>([]);
-  const [hotTopics, setHotTopics] = useState<Array<{ topic: string; mentions: number; trend: "up" | "down" }>>([]);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const {
+    data,
+    isFetching: load,
+    error: requestError,
+    refetch,
+  } = useQuery({
+    queryKey: ["live-market-dashboard"],
+    queryFn: fetchDashboardData,
+    refetchInterval: 300000,
+    staleTime: 30000,
+  });
+  const indices: IndexPrice[] = data?.indices ?? [];
+  const popularStocks: Stock[] = data?.popularStocks ?? [];
+  const sectorData: SectorData[] = data?.sectors ?? [];
+  const marketData: MarketData[] = data?.chartData ?? [];
+  const sentimentData = (data?.sentiment ?? []).map((item) => ({
+    ...item,
+    color:
+      item.name === "Bullish"
+        ? "hsl(145, 70%, 45%)"
+        : item.name === "Neutral"
+          ? "hsl(38, 92%, 50%)"
+          : "hsl(0, 72%, 55%)",
+  }));
+  const hotTopics = data?.hotTopics ?? [];
+  const marketStatus = data?.marketStatus ?? null;
+  const lastUpdate = data?.asOf ? new Date(data.asOf) : null;
+  const detail = data?.errors.slice(0, 3).join(" ");
+  const remaining = Math.max(0, (data?.errors.length ?? 0) - 3);
+  const error = requestError instanceof Error
+    ? `Live market data is unavailable: ${requestError.message}`
+    : detail
+      ? `Some live feeds are unavailable: ${detail}${remaining > 0 ? ` (${remaining} more issue${remaining === 1 ? "" : "s"}).` : ""}`
+      : null;
 
-  const loadData = async () => {
-    try {
-      setError(null);
-      setLoading(true);
-      
-      // Fetch all data in parallel
-      const [indexData, moversData, sectorPerf, sentiment, topics, chartData] = await Promise.all([
-        fetchIndexPrices(),
-        fetchTopMovers(),
-        fetchSectorPerformance(),
-        fetchMarketSentiment(),
-        fetchHotTopics(),
-        fetchMarketChartData(),
-      ]);
-
-      if (indexData.length > 0) {
-        setIndices(indexData);
-      }
-      if (moversData.length > 0) {
-        setTopMovers(moversData);
-      }
-      if (sectorPerf.length > 0) {
-        setSectorData(sectorPerf);
-      }
-      if (sentiment.length > 0) {
-        const sentimentWithColors = sentiment.map((s) => ({
-          ...s,
-          color:
-            s.name === "Bullish"
-              ? "hsl(145, 70%, 45%)"
-              : s.name === "Neutral"
-                ? "hsl(38, 92%, 50%)"
-                : "hsl(0, 72%, 55%)",
-        }));
-        setSentimentData(sentimentWithColors);
-      }
-      if (topics.length > 0) {
-        setHotTopics(topics);
-      }
-
-      // Update market data with real chart data
-      if (chartData.length > 0) {
-        setMarketData(chartData);
-      }
-
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
-      setError("Failed to load real-time data. Using cached values.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const stats = indices.length > 0 && indices[0]?.price && indices[0].price > 0
-    ? [
-        {
-          label: "S&P 500 (SPY)",
-          value: indices[0]?.price?.toFixed(2) || "—",
-          change: `${indices[0]?.changePercent?.toFixed(1) || 0}%`,
-          up: (indices[0]?.change || 0) >= 0,
-          icon: TrendingUp,
-        },
-        {
-          label: "NASDAQ (QQQ)",
-          value: indices[1]?.price?.toFixed(2) || "—",
-          change: `${indices[1]?.changePercent?.toFixed(1) || 0}%`,
-          up: (indices[1]?.change || 0) >= 0,
-          icon: Activity,
-        },
-        {
-          label: "DOW (DIA)",
-          value: indices[2]?.price?.toFixed(2) || "—",
-          change: `${indices[2]?.changePercent?.toFixed(1) || 0}%`,
-          up: (indices[2]?.change || 0) >= 0,
-          icon: DollarSign,
-        },
-        {
-          label: "Market Status",
-          value: "OPEN",
-          change: "Market Hours",
-          up: true,
-          icon: BarChart3,
-        },
-      ]
-    : [];
+  const stats = [
+    { symbol: "SPY", label: "S&P 500 ETF (SPY)", icon: TrendingUp },
+    { symbol: "QQQ", label: "NASDAQ-100 ETF (QQQ)", icon: Activity },
+    { symbol: "DIA", label: "Dow Jones ETF (DIA)", icon: DollarSign },
+  ].map(({ symbol, label, icon }) => {
+    const quote = indices.find((item) => item.symbol === symbol);
+    return {
+      label,
+      value: quote ? quote.price.toFixed(2) : "Unavailable",
+      change: quote ? `${quote.changePercent >= 0 ? "+" : ""}${quote.changePercent.toFixed(2)}%` : "No live quote",
+      up: quote ? quote.change >= 0 : false,
+      icon,
+    };
+  }).concat({
+    label: "Market Status",
+    value: marketStatus ? (marketStatus.isOpen ? "OPEN" : "CLOSED") : "Unavailable",
+    change: marketStatus?.session || "No live status",
+    up: marketStatus?.isOpen ?? false,
+    icon: BarChart3,
+  });
 
   return (
     <div className="w-full space-y-4 sm:space-y-6">
@@ -154,12 +96,12 @@ const Dashboard = () => {
       {/* Refresh Button */}
       <motion.div className="flex justify-end" {...fadeIn}>
         <button
-          onClick={loadData}
+          onClick={() => void refetch()}
           disabled={load}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={load ? "animate-spin" : ""} />
-          Last updated: {lastUpdate.toLocaleTimeString()}
+          Last quote: {lastUpdate ? lastUpdate.toLocaleTimeString() : "Unavailable"}
         </button>
       </motion.div>
 
@@ -187,23 +129,31 @@ const Dashboard = () => {
         <motion.div className="xl:col-span-2" {...fadeIn} transition={{ delay: 0.3 }}>
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Market Overview</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Market Overview · Index Trend (ET)</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[200px] sm:h-[280px] w-full">
-                <AreaChart data={marketData}>
-                  <defs>
-                    <linearGradient id="sp500Gradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} domain={["dataMin - 20", "dataMax + 20"]} width={35} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area type="monotone" dataKey="sp500" stroke="hsl(var(--chart-1))" fill="url(#sp500Gradient)" strokeWidth={2} />
-                </AreaChart>
-              </ChartContainer>
+              {marketData.length === 0 ? (
+                <p className="flex h-50 items-center justify-center text-sm text-muted-foreground sm:h-50">
+                  Live candle data is unavailable.
+                </p>
+              ) : (
+                <ChartContainer config={chartConfig} className="h-50 sm:h-70 w-full">
+                  <AreaChart data={marketData}>
+                    <defs>
+                      <linearGradient id="sp500Gradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} domain={["auto", "auto"]} width={45} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area type="monotone" dataKey="sp500" stroke="hsl(var(--chart-1))" fill="url(#sp500Gradient)" strokeWidth={2} connectNulls />
+                    <Area type="monotone" dataKey="nasdaq" stroke="hsl(var(--chart-2))" fill="none" strokeWidth={2} connectNulls />
+                    <Area type="monotone" dataKey="dow" stroke="hsl(var(--chart-3))" fill="none" strokeWidth={2} connectNulls />
+                  </AreaChart>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -212,19 +162,25 @@ const Dashboard = () => {
         <motion.div {...fadeIn} transition={{ delay: 0.3 }}>
           <Card className="bg-card border-border/50 h-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Market Sentiment</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Market Sentiment · News-derived</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center">
-              <div className="h-[150px] sm:h-[180px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={sentimentData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value" stroke="none">
-                      {sentimentData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="h-37.5 sm:h-45 w-full">
+                {sentimentData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={sentimentData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value" stroke="none">
+                        {sentimentData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Live news sentiment unavailable.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-2 mt-3 w-full">
                 {sentimentData.map((s) => (
@@ -246,46 +202,56 @@ const Dashboard = () => {
         <motion.div {...fadeIn} transition={{ delay: 0.35 }}>
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Sector Performance</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Sector ETF Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={sectorChartConfig} className="h-[180px] sm:h-[220px] w-full">
-                <BarChart data={sectorData} layout="vertical">
-                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="sector" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={50} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="change" radius={[0, 4, 4, 0]}>
-                    {sectorData.map((entry, i) => (
-                      <Cell key={i} fill={entry.change >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
+              {sectorData.length === 0 ? (
+                <p className="flex h-45 items-center justify-center text-sm text-muted-foreground sm:h-55">
+                  Live sector data is unavailable.
+                </p>
+              ) : (
+                <ChartContainer config={sectorChartConfig} className="h-45 sm:h-55 w-full">
+                  <BarChart data={sectorData} layout="vertical">
+                    <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="sector" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} width={110} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="change" radius={[0, 4, 4, 0]}>
+                      {sectorData.map((entry, i) => (
+                        <Cell key={i} fill={entry.change >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Top movers */}
+        {/* Popular stocks */}
         <motion.div {...fadeIn} transition={{ delay: 0.4 }}>
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Top Movers</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Popular Stocks · Live Quotes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {topMovers.slice(0, 4).map((stock) => (
-                <div key={stock.symbol} className="flex items-center justify-between py-1 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-display font-semibold text-sm">{stock.symbol}</p>
-                    <p className="text-xs text-muted-foreground truncate">{stock.name}</p>
+              {popularStocks.length > 0 ? (
+                popularStocks.slice(0, 4).map((stock) => (
+                  <div key={stock.symbol} className="flex items-center justify-between py-1 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-display font-semibold text-sm">{stock.symbol}</p>
+                      <p className="text-xs text-muted-foreground truncate">{stock.name}</p>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <p className="font-mono text-sm font-medium">${stock.price.toFixed(2)}</p>
+                      <p className={`text-xs font-mono ${stock.changePercent >= 0 ? "profit-text" : "loss-text"}`}>
+                        {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <p className="font-mono text-sm font-medium">${stock.price.toFixed(2)}</p>
-                    <p className={`text-xs font-mono ${stock.changePercent >= 0 ? "profit-text" : "loss-text"}`}>
-                      {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">Live stock quotes are unavailable.</p>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -300,19 +266,25 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
-              {hotTopics.slice(0, 4).map((topic) => (
-                <div key={topic.topic} className="flex items-center justify-between py-1 text-sm">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {topic.trend === "up" ? (
-                      <TrendingUp size={14} className="profit-text shrink-0" />
-                    ) : (
-                      <TrendingDown size={14} className="loss-text shrink-0" />
-                    )}
-                    <span className="text-sm font-medium truncate">{topic.topic}</span>
+              {hotTopics.length > 0 ? (
+                hotTopics.slice(0, 4).map((topic) => (
+                  <div key={topic.topic} className="flex items-center justify-between py-1 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {topic.trend === "up" ? (
+                        <TrendingUp size={14} className="profit-text shrink-0" />
+                      ) : topic.trend === "down" ? (
+                        <TrendingDown size={14} className="loss-text shrink-0" />
+                      ) : (
+                        <Minus size={14} className="text-muted-foreground shrink-0" />
+                      )}
+                      <span className="text-sm font-medium truncate">{topic.topic}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground font-mono shrink-0 ml-2">{topic.mentions.toLocaleString()}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono shrink-0 ml-2">{topic.mentions.toLocaleString()}</span>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">No current news topics are available.</p>
+              )}
             </CardContent>
           </Card>
         </motion.div>

@@ -1,22 +1,22 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "#src/components/ui/toaster";
+import { Toaster as Sonner } from "#src/components/ui/sonner";
+import { TooltipProvider } from "#src/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "#src/contexts/AuthContext";
 import { useEffect } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import AppLayout from "@/components/layout/AppLayout";
-import Dashboard from "@/pages/Dashboard";
-import StockResearch from "@/pages/StockResearch";
-import Strategy from "@/pages/Strategy";
-import News from "@/pages/News";
-import Sentiment from "@/pages/Sentiment";
-import Risk from "@/pages/Risk";
-import StockAssist from "@/pages/StockAssist";
-import Settings from "@/pages/Settings";
-import Auth from "@/pages/Auth";
-import NotFound from "@/pages/NotFound";
+import ProtectedRoute from "#src/components/ProtectedRoute";
+import AppLayout from "#src/components/layout/AppLayout";
+import Dashboard from "#src/pages/Dashboard";
+import StockResearch from "#src/pages/StockResearch";
+import Strategy from "#src/pages/Strategy";
+import News from "#src/pages/News";
+import Sentiment from "#src/pages/Sentiment";
+import Risk from "#src/pages/Risk";
+import StockAssist from "#src/pages/StockAssist";
+import Settings from "#src/pages/Settings";
+import Auth from "#src/pages/Auth";
+import NotFound from "#src/pages/NotFound";
 
 const queryClient = new QueryClient();
 

@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Send, Sparkles, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Input } from "#src/components/ui/input";
+import { Button } from "#src/components/ui/button";
+import { Card } from "#src/components/ui/card";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
-
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stock-assist`;
 
 const suggestedQuestions = [
   "Summarize Apple's latest earnings report",
@@ -20,30 +18,22 @@ const suggestedQuestions = [
 async function streamChat({
   messages,
   onDelta,
-  onDone,
-  onError,
 }: {
   messages: Msg[];
   onDelta: (text: string) => void;
-  onDone: () => void;
-  onError: (err: string) => void;
 }) {
-  const resp = await fetch(CHAT_URL, {
+  const resp = await fetch("/api/ai", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ messages }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "chat", messages }),
   });
 
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
-    onError(data.error || `Error ${resp.status}`);
-    return;
+    throw new Error(data.error || `Gemini request failed (${resp.status}).`);
   }
 
-  if (!resp.body) { onError("No response body"); return; }
+  if (!resp.body) throw new Error("Gemini returned no response stream.");
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -51,8 +41,8 @@ async function streamChat({
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, { stream: !done });
+    if (done) buffer += "\n";
 
     let idx: number;
     while ((idx = buffer.indexOf("\n")) !== -1) {
@@ -61,15 +51,16 @@ async function streamChat({
       if (line.endsWith("\r")) line = line.slice(0, -1);
       if (!line.startsWith("data: ")) continue;
       const json = line.slice(6).trim();
-      if (json === "[DONE]") { onDone(); return; }
-      try {
-        const parsed = JSON.parse(json);
-        const content = parsed.choices?.[0]?.delta?.content;
-        if (content) onDelta(content);
-      } catch { /* partial json, skip */ }
+      if (json === "[DONE]") return;
+      const parsed = JSON.parse(json);
+      if (parsed.error?.message) throw new Error(parsed.error.message);
+      const content = parsed.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part.text || "")
+        .join("");
+      if (content) onDelta(content);
     }
+    if (done) break;
   }
-  onDone();
 }
 
 const StockAssist = () => {
@@ -87,24 +78,25 @@ const StockAssist = () => {
 
     let assistantSoFar = "";
 
-    await streamChat({
-      messages: updatedMessages,
-      onDelta: (chunk) => {
-        assistantSoFar += chunk;
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "assistant") {
-            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
-          }
-          return [...prev, { role: "assistant", content: assistantSoFar }];
-        });
-      },
-      onDone: () => setIsLoading(false),
-      onError: (err) => {
-        toast.error(err);
-        setIsLoading(false);
-      },
-    });
+    try {
+      await streamChat({
+        messages: updatedMessages,
+        onDelta: (chunk) => {
+          assistantSoFar += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant") {
+              return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            }
+            return [...prev, { role: "assistant", content: assistantSoFar }];
+          });
+        },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gemini request failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

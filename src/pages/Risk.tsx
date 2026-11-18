@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ShieldAlert, Loader2, AlertTriangle, Shield, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { Button } from "#src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { Badge } from "#src/components/ui/badge";
+import { requestAi } from "#src/lib/ai";
 import { toast } from "sonner";
-import StockAutocomplete from "@/components/StockAutocomplete";
+import StockAutocomplete from "#src/components/StockAutocomplete";
 
 interface Risk {
   category: string;
@@ -35,14 +35,10 @@ const RiskPage = () => {
     setLoading(true);
     setData(null);
     try {
-      const { data: result, error } = await supabase.functions.invoke("stock-risk", {
-        body: { query: query.trim() },
-      });
-      if (error) throw error;
-      if (result.error) throw new Error(result.error);
+      const result = await requestAi<RiskData>("risk", { query: query.trim() });
       setData(result);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to analyze risks");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to analyze risks");
     } finally {
       setLoading(false);
     }

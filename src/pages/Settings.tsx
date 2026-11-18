@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { useAuth } from "#src/contexts/AuthContext";
+import { supabase } from "#src/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { Input } from "#src/components/ui/input";
+import { Label } from "#src/components/ui/label";
+import { Button } from "#src/components/ui/button";
+import { Switch } from "#src/components/ui/switch";
 import { ArrowLeft, User, Mail, Moon, Sun, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,7 +55,6 @@ const Settings = () => {
           .from("profiles")
           .insert({
             id: user.id,
-            email: user.email,
             display_name: displayName,
             created_at: new Date().toISOString(),
           })

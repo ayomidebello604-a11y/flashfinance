@@ -19,23 +19,23 @@ Authenticated application routes are protected, and user/profile authentication 
 
 ## Tech Stack
 
-- React 18
-- TypeScript
-- Vite
+- React 19
+- TypeScript 7
+- Vite 8
 - React Router
 - TanStack Query
 - Supabase
-- Tailwind CSS
+- Tailwind CSS 4
 - shadcn/ui and Radix UI
 - Recharts
 - Framer Motion
-- Vitest
+- Vitest 5
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js
+- Node.js 20.19+ or 22.12+
 - npm
 
 ### Installation
@@ -48,14 +48,23 @@ npm install
 
 ### Environment Variables
 
-Create a `.env` file in the project root and provide the Supabase project credentials:
+Create a `.env` file in the project root:
 
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+GEMINI_API_KEY=your_google_gemini_api_key
+FINNHUB_API_KEY=your_finnhub_api_key
 ```
 
 Use the publishable/anonymous client key intended for browser applications. Do not put a Supabase service-role key in frontend environment variables.
+Keep `GEMINI_API_KEY` server-side; it is used by the Vercel `/api/ai` function and must not use a `VITE_` prefix. Add the same `GEMINI_API_KEY` to the Vercel project's Environment Variables for deployments. The app defaults to `gemini-3.5-flash-lite`; you can optionally set `GEMINI_MODEL` to another model available to your Google AI Studio key.
+`FINNHUB_API_KEY` is used by the server-side `/api/market` function for quotes, intraday candles, market status, and news. Add it to the Vercel project's Environment Variables as well. Existing local `.env` files using `VITE_FINNHUB_API_KEY` remain supported, but the server-only name is recommended.
+The `/api/ai` endpoint is reachable by app clients. Restrict the Gemini key to the Generative Language API, set usage quotas, and configure Vercel rate limits for production.
+
+AI research, strategy, sentiment, risk, and assistant features use Gemini through `/api/ai`. The News page and dashboard market feeds use Finnhub through `/api/market`; stock research and strategy pages show Finnhub quotes, and sector performance is represented by sector ETFs. Dashboard sentiment and topics are derived from current provider headlines. Data freshness and endpoint availability depend on the Finnhub account plan.
+
+For local development, add the keys to `.env` and run `npm run dev`. The Vite development server exposes `/api/ai` and `/api/market` locally.
 
 ### Run Locally
 

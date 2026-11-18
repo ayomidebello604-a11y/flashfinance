@@ -1,4 +1,4 @@
-import { Github, Linkedin, Twitter, ArrowUp } from "lucide-react";
+import { ArrowUp, ExternalLink } from "lucide-react";
 
 const Footer = () => {
   const scrollToTop = () => {
@@ -14,13 +14,13 @@ const Footer = () => {
 
         <div className="flex items-center gap-3 sm:gap-4 order-1 sm:order-2">
           <a href="#" className="text-muted-foreground hover:text-primary transition-colors p-2 hover:bg-secondary/50 rounded-lg">
-            <Github size={18} />
+            <ExternalLink size={18} />
           </a>
           <a href="#" className="text-muted-foreground hover:text-primary transition-colors p-2 hover:bg-secondary/50 rounded-lg">
-            <Linkedin size={18} />
+            <ExternalLink size={18} />
           </a>
           <a href="#" className="text-muted-foreground hover:text-primary transition-colors p-2 hover:bg-secondary/50 rounded-lg">
-            <Twitter size={18} />
+            <ExternalLink size={18} />
           </a>
         </div>
 

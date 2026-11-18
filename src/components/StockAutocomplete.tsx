@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "#src/lib/utils";
 
 const POPULAR_STOCKS = [
   { ticker: "AAPL", name: "Apple Inc." },

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ExternalLink, Github } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 const projects = [
   {
@@ -95,7 +95,7 @@ const Projects = () => {
                     href={project.github}
                     className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
-                    <Github size={14} /> Source Code
+                    <ExternalLink size={14} /> Source Code
                   </a>
                 </div>
               </div>

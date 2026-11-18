@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "#src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#src/components/ui/card";
+import { Badge } from "#src/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#src/components/ui/tabs";
+import { requestAi } from "#src/lib/ai";
+import { fetchMarketQuote } from "#src/lib/api";
+import type { IndexPrice } from "#src/lib/market-types";
 import { toast } from "sonner";
-import StockAutocomplete from "@/components/StockAutocomplete";
+import StockAutocomplete from "#src/components/StockAutocomplete";
 
 interface TechnicalIndicator {
   name: string;
@@ -33,20 +36,29 @@ const Strategy = () => {
   const [activeTimeframe, setActiveTimeframe] = useState("intraday");
   const [loading, setLoading] = useState(false);
   const [strategies, setStrategies] = useState<Record<string, Strategy>>({});
+  const [quoteSymbol, setQuoteSymbol] = useState("");
+  const { data: quote, isFetching: quoteLoading, error: quoteError } = useQuery<IndexPrice>({
+    queryKey: ["strategy-market-quote", quoteSymbol],
+    queryFn: () => fetchMarketQuote(quoteSymbol),
+    enabled: Boolean(quoteSymbol),
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
 
   const handleGenerate = async (timeframe?: string) => {
     if (!ticker.trim()) return;
     const tf = timeframe || activeTimeframe;
+    const symbol = ticker.trim().toUpperCase();
+    setQuoteSymbol(symbol);
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("stock-strategy", {
-        body: { ticker: ticker.trim(), timeframe: tf },
+      const data = await requestAi<Strategy>("strategy", {
+        ticker: symbol,
+        timeframe: tf,
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
       setStrategies((prev) => ({ ...prev, [tf]: data }));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to generate strategy");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate strategy");
     } finally {
       setLoading(false);
     }
@@ -192,6 +204,41 @@ const Strategy = () => {
           Generate Strategy
         </Button>
       </form>
+
+      {quoteSymbol && (
+        <Card className="bg-card border-border/50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4 pb-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Finnhub Quote · {quoteSymbol}</p>
+              {quote ? (
+                <p className="font-mono text-lg font-bold">${quote.price.toFixed(2)}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {quoteLoading ? "Loading provider quote..." : "Provider quote unavailable"}
+                </p>
+              )}
+            </div>
+            {quote ? (
+              <div className="text-right">
+                <p className={`font-mono text-sm ${quote.change >= 0 ? "profit-text" : "loss-text"}`}>
+                  {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePercent >= 0 ? "+" : ""}{quote.changePercent.toFixed(2)}%)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {quote.timestamp
+                    ? `As of ${new Date(quote.timestamp * 1000).toLocaleTimeString()}`
+                    : "Provider timestamp unavailable"}
+                </p>
+              </div>
+            ) : quoteError instanceof Error ? (
+              <p className="text-xs text-muted-foreground">{quoteError.message}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        The quote above is provider data. Strategy signals and price levels are AI-generated analysis, not live quotes or financial advice.
+      </p>
 
       <Tabs value={activeTimeframe} onValueChange={(v) => { setActiveTimeframe(v); if (ticker.trim() && !strategies[v]) handleGenerate(v); }}>
         <TabsList className="bg-secondary/50">

@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, LogOut, Settings, Menu } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "#src/components/ui/input";
+import { Button } from "#src/components/ui/button";
+import { useAuth } from "#src/contexts/AuthContext";
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
   "/research": "AI Stock Research",
   "/strategy": "LLM Strategy Builder",
-  "/news": "Synthesized News",
+  "/news": "Live Market News",
   "/sentiment": "Market Sentiment",
   "/risk": "Risk Analysis",
   "/assist": "Stock Assist",
