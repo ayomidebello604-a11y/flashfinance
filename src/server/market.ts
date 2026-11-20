@@ -492,7 +492,8 @@ export async function handleMarketRequest(request: Request): Promise<Response> {
     }, 500);
   }
 
-  const url = new URL(request.url);
+  const host = request.headers?.get?.("host") || "localhost";
+  const url = new URL(request.url, `http://${host}`);
   const view = url.searchParams.get("view");
   try {
     if (view === "dashboard") return jsonResponse(await fetchDashboardData());

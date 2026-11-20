@@ -116,4 +116,22 @@ describe("market data API", () => {
     expect(data.marketStatus).toBeNull();
     expect(data.errors.length).toBeGreaterThan(0);
   });
+
+  it("handles relative URL paths in serverless environments without throwing", async () => {
+    env.FINNHUB_API_KEY = "test-server-key";
+    const marketFetch = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json([]),
+    );
+    vi.stubGlobal("fetch", marketFetch);
+
+    const relativeRequest = {
+      method: "GET",
+      url: "/api/market?view=news&query=",
+      headers: new Headers({ host: "flashfinance.vercel.app" }),
+    } as unknown as Request;
+
+    const response = await handleMarketRequest(relativeRequest);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ articles: [], notice: null });
+  });
 });
