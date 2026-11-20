@@ -261,7 +261,7 @@ async function fetchAlphaVantageChartData(errors: string[]): Promise<MarketData[
 
   for (let i = 0; i < BENCHMARKS.length; i++) {
     const benchmark = BENCHMARKS[i];
-    if (i > 0) await wait(1200);
+    if (i > 0) await wait(1500);
 
     try {
       const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${benchmark.symbol}&apikey=${encodeURIComponent(key)}`;
