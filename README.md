@@ -74,12 +74,14 @@ npm run dev
 
 Vite will print the local development URL in the terminal.
 
+The production build includes the Vite frontend bundle in `dist/assets` and emits the source modules individually under `dist/src`. The `/api/ai` and `/api/market` Vercel functions use the emitted server modules.
+
 ### Available Scripts
 
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start the development server |
-| `npm run build` | Build the production application |
+| `npm run build` | Build the frontend bundle and emit each `src` TypeScript file as JavaScript under `dist/src` |
 | `npm run build:dev` | Build using development mode |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | Run ESLint |
